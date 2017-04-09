@@ -1,325 +1,77 @@
 #!/usr/bin/env node
+"use strict";
+// Copyright 2017 Kristian Nordman, 2015 Mikeal Rogers 
+//
+//    Licensed under the Apache License, Version 2.0 (the "License");
+//    you may not use this file except in compliance with the License.
+//    You may obtain a copy of the License at
+//
+//        http://www.apache.org/licenses/LICENSE-2.0
+//
+//    Unless required by applicable law or agreed to in writing, software
+//    distributed under the License is distributed on an "AS IS" BASIS,
+//    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//    See the License for the specific language governing permissions and
+//    limitations under the License.
 
-var couchapp = require('./main.js')
-  , watch = require('watch')
-  , path = require('path')
-  , fs = require('fs')
-  ;
+var jscouch = require('./main.js');
+var fs = require('fs');
+var path = require('path');
 
-function abspath (pathname) {
-  if (pathname[0] === '/') return pathname
-  return path.join(process.cwd(), path.normalize(pathname));
-}
 
-function copytree (source, dest) {
-  watch.walk(source, function (err  , files) {
-    for (i in files) {
-      (function (i) {
-        if (files[i].isDirectory()) {
-          try {
-            fs.mkdirSync(i.replace(source, dest), 0755)
-          } catch(e) {
-            console.log('Could not create '+i.replace(source,dest))
-          }
-        } else {
-          var stream = fs.createReadStream(i).pipe(fs.createWriteStream(i.replace(source, dest)));
-          stream.on("error", function (err) {
-              throw err;
-          });
-        }
-      })(i);
+if (require.main === module) {
+    var node = process.argv.shift();
+    var bin = process.argv.shift();
+    var command = process.argv.shift();
+    var docsdir = process.argv.shift();
+    var database = process.argv.shift();
+
+    if (command == 'help' || command == undefined) {
+        console.log(
+            [ "couchjs -- utility for pushing docs containing js to CouchDB"
+            , ""
+            , "Usage:"
+            , " couchjs <command> <docsdirectory> http://localhost:5984/dbname" 
+            , ""
+            , "Commands:"
+            , "  push   : Push docs to server."
+            , ""
+            , "Config file [.couchjs.json]:"
+            , JSON.stringify({
+                'tls': {
+                    'cert': 'path to tls client cert',
+                    'key': 'path to tls client cert private key',
+                    'passphrase': 'cert passphrase'
+                },
+                'auth': {
+                    'user': 'basic auth user',
+                    'pass': 'basic auth password'
+                },
+                'filter': 'include_filter_for_docs_directory'
+            }, null, 2)
+            ]
+            .join('\n')
+        )
+        process.exit();
     }
-  })
-}
 
-function boiler (app) {
-  app = app || '.'
-  copytree(path.join(__dirname, 'boiler'), path.join(process.cwd(), app));
-}
-
-
-function onBeforePushSync() {
-  if (beforePushSyncListener && typeof beforePushSyncListener.onBeforePushSync === "function") {
-    beforePushSyncListener.onBeforePushSync();
-  }
-}
-function onAfterPushSync() {
-  if (afterPushSyncListener && typeof afterPushSyncListener.onAfterPushSync === "function") {
-    afterPushSyncListener.onAfterPushSync();
-  }
-}
-var _isUsingDirectoryConfig;
-function isUsingDirectoryConfig() {
-  if(_isUsingDirectoryConfig != null)
-    return _isUsingDirectoryConfig;
-  return _isUsingDirectoryConfig = (process.argv[2] && (process.argv[2].trim() === "-dc"));
-}
-
-if (process.mainModule && process.mainModule.filename === __filename) {
-  var node
-    , bin
-    , command
-    , app
-    , couch
-    , configDirectory
-    , configFileNames
-    , apps = []
-    , beforePushSyncListener
-    , afterPushSyncListener
-    ;
-
-  //check for directory-based config, if so then read rather than shift() the arguments: will need to read them again later
-  if (isUsingDirectoryConfig()) {
-    node = process.argv[0];
-    bin = process.argv[1];
-    command = process.argv[3];
-    configDirectory = process.argv[4];
-    couch = process.argv[5];
-    configFileNames = fs.readdirSync(configDirectory);
-    if (configFileNames) {
-      configFileNames.forEach(function (value, index) {
-        //any files starting with "app" are included as app files e.g. app.js, app_number1.js etc.
-        if (value.indexOf("app") == 0) {
-          apps.push(path.join(configDirectory, value));
-        }
-        //"before" listener must be called beforepushsync.js and be in the config directory
-        else if (value.toLowerCase().trim() === "beforepushsync.js") {
-          beforePushSyncListener = require(abspath(path.join(configDirectory, "beforepushsync.js")));
-        }
-        //"after" listener must be called afterpushsync.js and be in the config directory
-        else if (value.toLowerCase().trim() === "afterpushsync.js") {
-          afterPushSyncListener = require(abspath(path.join(configDirectory, "afterpushsync.js")));
-        }
-      });
+    // Default config
+    var config = {
+        filter: '.*_db\.js'
     }
-  }
-  else {
-    node = process.argv.shift();
-    bin = process.argv.shift();
-    command = process.argv.shift();
-    app = process.argv.shift();
-    couch = process.argv.shift();
-  }
 
-  if (command == 'help' || command == undefined) {
-    console.log(
-      [ "couchapp -- utility for creating couchapps"
-        , ""
-        , "Usage:"
-        , "(backwardly compatible without switch - single app file)"
-        , "  couchapp <command> app.js http://localhost:5984/dbname [opts]"
-        , "(directory based config specified by switch - multiple app files and pre- and post-processing capability)"
-        , " couchapp -dc <command> <appconfigdirectory> http://localhost:5984/dbname"
-        , ""
-        , "Commands:"
-        , "  push   : Push app once to server."
-        , "  sync   : Push app then watch local files for changes."
-        , "  boiler : Create a boiler project."
-        , "  serve  : Serve couchapp from development webserver"
-        , "            you can specify some options "
-        , "            -p port  : list on port portNum [default=3000]"
-        , "            -d dir   : attachments directory [default='attachments']"
-        , "            -l       : log rewrites to couchdb [default='false']"
-      ]
-      .join('\n')
-    )
-    process.exit();
-  }
-
-  if (couch == undefined) {
     try {
-      couch = JSON.parse(fs.readFileSync('.couchapp.json')).couch;
+        config = JSON.parse(fs.readFileSync('.jscouch.json'));
     } catch (e) {
-      // Discard exception: absent or malformed config file
+        // Discard exception: absent or malformed config file
     }
-  }
 
-  if (isUsingDirectoryConfig()) {
-    if (command == 'boiler') {
-      for (i in apps) {
-        boiler(apps[i]);
-      }
-    } else {
-      onBeforePushSync();
-
-      //NOTE: im not sure about this... maybe we want to let the handler handle the error?
-      //  anyway - in this for it's completely backward compatible with the existing hooks API
-      var onAfterPushSyncWrap = function(err) { if (err) throw err; onAfterPushSync() } 
-
-      for (i in apps) {
-        //an immediately executed function is used so the loop counter variable is available
-        //in createApp's callback function: multiple calls to push/sync are supported and
-        //onAfterPushSync is supplied as the callback function on the last call
-        (function keepLoopCounter(i) {
-          couchapp.createApp(require(abspath(apps[i])), function (app) {
-            if (command == 'push') {
-              app.push(couch, i == apps.length - 1 ? onAfterPushSyncWrap : null);
-            }
-            else if (command == 'sync') {
-              app.sync(couch, i == apps.length ? onAfterPushSyncWrap : null);
-            }
-          });
-        })(i);
-      }
-
-    }
-  }
-  else {
-    if (command == 'boiler') {
-      boiler(app);
-    } else {
-      couchapp.createApp(require(abspath(app)), function (app) {
-        if (command == 'push') app.push(couch)
-        else if (command == 'sync') app.sync(couch)
-        else if (command == 'serve') serve(app, couch);
-
-      })
-    }
-  }
-
+    var docs = fs.readdirSync(docsdir) || [];
+    docs.filter( (entry) => {
+        return entry.match(config.filter);
+    }).forEach( (doc, index) => {
+        console.log('Detected', doc);
+        let doc_path = path.join(process.cwd(), docsdir, doc);
+        jscouch.prepare_file(require(doc_path).doc, config).do(command, database);
+    });
 }
-
-// Start a development web server on app
-function serve(app, couch) {
-  var url = require('url');
-  var port = 3000,
-      staticDir = 'attachments',
-      tmpDir = '/tmp/couchapp-compile-' + process.pid,
-      logDbRewrites = false;
-  var arg;
-  while(arg = process.argv.shift()){
-    if(arg == '-p'){
-      port = parseInt(process.argv.shift());
-    }
-    if(arg == '-d'){
-      staticDir = process.argv.shift();
-    }
-    if(arg == '-l'){
-      logDbRewrites = true;
-    }
-  }
-  var dbUrlObj = url.parse(couch);
-
-  var proxyPaths = {}
-  var dbPrefix = '../../';
-  for (var i in app.doc.rewrites){
-    var rw = app.doc.rewrites[i];
-    // Rewrites starting with '../../' are proxied to the database
-    if (rw.to.indexOf(dbPrefix) == 0){
-      var proxyPath = rw.from;
-      if(proxyPath[proxyPath.length -1] == '*') {
-        proxyPath = proxyPath.substring(0,proxyPath.length-1)
-      }
-      var dbPath = rw.to.substring(dbPrefix.length);
-      if(dbPath[dbPath.length - 1] == '*'){
-        dbPath = dbPath.substring(0,dbPath.length-1)
-      }
-      if(dbPath.indexOf('*') >=0 ){
-        if(logDbRewrites){
-          console.log("Don't know how to proxy '" + rw.from + "' to CouchDB at " + rw.from );
-        }
-      } else {
-        proxyPaths[proxyPath] =
-          dbUrlObj.protocol + '//' + dbUrlObj.host +
-          path.normalize(dbUrlObj.pathname + dbPath);
-          if(logDbRewrites){
-            console.log("Proxying rewrite '" + proxyPath + "' to CouchDB at " + proxyPaths[proxyPath] );
-          }
-      }
-    }
-  }
-
-  var connect = require('connect');
-  var httpProxy = require('http-proxy'),
-      connect   = require('connect'),
-      logger = require('morgan'),
-      serveStatic = require('serve-static'),
-      errorHandler = require('errorhandler'),
-      connectCompiler;
-  try{
-      connectCompiler = require('connect-compiler');
-  } catch(e) {}
-
-
-  var proxy = httpProxy.createProxyServer({
-    target: {
-      host: dbUrlObj.host,
-      hostname: dbUrlObj.hostname,
-      port: dbUrlObj.port,
-      https: dbUrlObj.protocol == 'https:',
-    }
-  });
-  var app = connect()
-    .use(logger('dev'))
-    .use(serveStatic(staticDir));
-  if(connectCompiler){
-    console.log('Will compile assets with connect-assets.');
-    var ignore = [];
-    var quote = function(str) {
-      return (str+'').replace(/([.?*+^$[\]\\(){}|-])/g, "\\$1");
-    }
-    for(var prefix in proxyPaths){
-      ignore.push(quote(prefix));
-    }
-    if(ignore.length){
-      //console.log("Asset compile ignore paths:", '^(' +  ignore.join('|') + ')');
-      ignore  = new RegExp('^(' +  ignore.join('|') + ')');
-    } else {
-      ignore = null;
-    }
-    app.use(connectCompiler({
-      enabled: ['coffee'] ,
-      src: staticDir,
-      dest: tmpDir,
-      ignore :  ignore,
-    }))
-    .use(serveStatic(tmpDir));
-  }
-  app.use(function(req, res, next) {
-      for(var prefix in proxyPaths){
-        var dbPath = proxyPaths[prefix];
-        if (req.url.indexOf(prefix) === 0) {
-          var dbURL = req.url.replace(prefix,dbPath);
-          if(logDbRewrites){
-            console.log("*** ", req.url , ' -> ', dbURL);
-          }
-          req.url = dbURL;
-          req.headers['host'] = dbUrlObj.host;
-          proxy.proxyRequest(req, res);
-          return;
-        }
-      }
-      var body = '404 Not found.\nNo static file or db route matched.';
-      res.statusCode = 404;
-      res.setHeader('Content-Length', body.length);
-      res.end(body);
-     })
-    .use(errorHandler())
-    .listen(port);
-  console.log("Serving couchapp at: http://0.0.0.0:" + port +"/");
-
-  //Cleanup the temp directory on exit
-  var cleanup = function(){
-    var rmDir = function(dirPath) {
-      try { var files = fs.readdirSync(dirPath); }
-      catch(e) { return; }
-      if (files.length > 0)
-        for (var i = 0; i < files.length; i++) {
-          var filePath = dirPath + '/' + files[i];
-          if (fs.statSync(filePath).isFile())
-            fs.unlinkSync(filePath);
-          else
-            rmDir(filePath);
-        }
-      fs.rmdirSync(dirPath);
-    };
-    rmDir(tmpDir);
-  };
-  process.on('exit',cleanup);
-  process.on('SIGINT',function(){
-    cleanup()
-    process.exit();
-  });
-}
-
-exports.boilerDirectory = path.join(__dirname, 'boiler')
