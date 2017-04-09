@@ -57,13 +57,16 @@ function prepare_file(jsdoc, config) {
         }
 
         if (config.tls) {
-            options.key = fs.readFileSync(config.tls.key);
-            options.cert = fs.readFileSync(config.tls.cert);
+            if (config.tls.cert) {
+                options.key = fs.readFileSync(config.tls.key);
+                options.cert = fs.readFileSync(config.tls.cert);
+                if (config.tls.passphrase) {
+                    options.passphrase = config.tls.passphrase;
+                }
+            }
+
             if (config.tls.ca) {
                 options.ca = fs.readFileSync(config.tls.ca);
-            }
-            if (config.tls.passphrase) {
-                options.passphrase = config.tls.passphrase;
             }
         }
 

@@ -13,28 +13,31 @@ $ npm link .
 
 # Difference to node.couchapp.js
 
-No attachments, less dependencies, more options for authenticating. 
+No attachments, less dependencies (only requests), more options for authenticating. 
 
 # Running
 
 <pre>
-$ couchjs -- utility for pushing docs containing js to CouchDB
+couchjs -- utility for pushing docs containing js to CouchDB
+
 Usage:
-  couchjs <command> <docsdirectory> http://localhost:5984/dbname
+ couchjs <command> <docsdirectory> http://localhost:5984/dbname
+
 Commands:
   push   : Push docs to server.
+
 Config file [.couchjs.json]:
 {
   "tls": {
     "cert": "path to tls client cert",
     "key": "path to tls client cert private key",
-    "ca": "path to CA for database server",    
-    "passphrase": "cert passphrase"
+    "passphrase": "tls client cert passphrase",
+    "ca": "path to CA for database tls server cert"
   },
   "auth": {
     "user": "basic auth user",
     "pass": "basic auth password"
   },
-  "filter": "include_filter_for_docs_directory"
+  "filter": "include filter for docsdirectory"
 }
 </pre>

@@ -36,19 +36,19 @@ if (require.main === module) {
             , "Commands:"
             , "  push   : Push docs to server."
             , ""
-            , "Config file [.couchjs.json]:"
+            , "Config file options [.couchjs.json]:"
             , JSON.stringify({
                 'tls': {
                     'cert': 'path to tls client cert',
                     'key': 'path to tls client cert private key',
-                    'ca': 'path to CA for database server',
-                    'passphrase': 'cert passphrase'
+                    'passphrase': 'tls client cert passphrase',
+                    'ca': 'path to CA for database tls server cert'
                 },
                 'auth': {
                     'user': 'basic auth user',
                     'pass': 'basic auth password'
                 },
-                'filter': 'include_filter_for_docs_directory'
+                'filter': 'include filter for docsdirectory'
             }, null, 2)
             ]
             .join('\n')
@@ -61,10 +61,13 @@ if (require.main === module) {
         filter: '.*_db\.js'
     }
 
-    try {
-        config = JSON.parse(fs.readFileSync('.jscouch.json'));
-    } catch (e) {
-        // Discard exception: absent or malformed config file
+    if (fs.statSync('.jscouch.json').isFile()) {
+        try {
+            config = JSON.parse(fs.readFileSync('.jscouch.json'));
+        }
+        catch(err) {
+            throw new Error('Cannot parse the .jscouch.json config file');
+        }
     }
 
     var docs = fs.readdirSync(docsdir) || [];
