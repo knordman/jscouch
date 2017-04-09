@@ -41,6 +41,7 @@ if (require.main === module) {
                 'tls': {
                     'cert': 'path to tls client cert',
                     'key': 'path to tls client cert private key',
+                    'ca': 'path to CA for database server',
                     'passphrase': 'cert passphrase'
                 },
                 'auth': {
