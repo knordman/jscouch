@@ -28,15 +28,15 @@ if (require.main === module) {
 
     if (command == 'help' || command == undefined) {
         console.log(
-            [ "couchjs -- utility for pushing docs containing js to CouchDB"
+            [ "jscouch -- utility for pushing docs containing js to CouchDB"
             , ""
             , "Usage:"
-            , " couchjs <command> <docsdirectory> http://localhost:5984/dbname" 
+            , " jscouch <command> <docsdirectory> http://localhost:5984/dbname" 
             , ""
             , "Commands:"
             , "  push   : Push docs to server."
             , ""
-            , "Config file options [.couchjs.json]:"
+            , "Config file options [.jscouch.json]:"
             , JSON.stringify({
                 'tls': {
                     'cert': 'path to tls client cert',

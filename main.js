@@ -123,4 +123,3 @@ function prepare_file(jsdoc, config) {
 }
 
 exports.prepare_file = prepare_file;
-exports.bin = require('./bin');
