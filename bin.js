@@ -2,14 +2,14 @@
 'use strict';
 // Copyright 2017 Kristian Nordman, 2015 Mikeal Rogers 
 //
-//    Licensed under the Apache License, Version 2.0 (the "License");
+//    Licensed under the Apache License, Version 2.0 (the 'License');
 //    you may not use this file except in compliance with the License.
 //    You may obtain a copy of the License at
 //
 //        http://www.apache.org/licenses/LICENSE-2.0
 //
 //    Unless required by applicable law or agreed to in writing, software
-//    distributed under the License is distributed on an "AS IS" BASIS,
+//    distributed under the License is distributed on an 'AS IS' BASIS,
 //    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 //    See the License for the specific language governing permissions and
 //    limitations under the License.
@@ -28,16 +28,16 @@ if (require.main === module) {
 
     if (command == 'help' || command == undefined) {
         console.log(
-            [ "jscouch -- utility for pushing docs containing js to CouchDB"
-            , ""
-            , "Usage:"
-            , " jscouch <command> <directory> http://mycouch:5984/dbname" 
-            , ""
-            , "Commands:"
-            , "  help   : Show this help"
-            , "  push   : Push docs to server."
-            , ""
-            , "Config file config [read from .jscouch.json]:"
+            [ 'jscouch -- utility for pushing docs containing js to CouchDB'
+            , ''
+            , 'Usage:'
+            , ' jscouch <command> <directory> http://mycouch:5984/dbname' 
+            , ''
+            , 'Commands:'
+            , '  help   : Show this help'
+            , '  push   : Push docs to server.'
+            , ''
+            , 'Config file config [read from .jscouch.json]:'
             , JSON.stringify({
                 'filter': 'include filter for files in directory',
                 'auth': {
@@ -65,19 +65,19 @@ if (require.main === module) {
             }, null, 2)
             ]
             .join('\n')
-        )
+        );
         process.exit();
     }
 
     // Default config
     var config = {
         filter: '.*_db\.js'
-    }
+    };
 
     if (fs.existsSync('.jscouch.json')) {
         try {
             config = JSON.parse(fs.readFileSync('.jscouch.json'));
-            log.info('using config file .jscouch.json');
+            console.log('using config file .jscouch.json');
         }
         catch(err) {
             throw new Error('cannot parse the .jscouch.json config file');
@@ -87,7 +87,7 @@ if (require.main === module) {
     var docs = fs.readdirSync(dir) || [];
     docs.filter(entry => {
         return entry.match(config.filter);
-    }).forEach((doc, index) => {
+    }).forEach(doc => {
         console.log(`Detected ${doc}`);
         let docPath = path.join(process.cwd(), dir, doc);
         jscouch.prepareFile(require(docPath).doc, config).do(command, database);

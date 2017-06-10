@@ -13,7 +13,6 @@
 //    See the License for the specific language governing permissions and
 //    limitations under the License.
 
-var path = require('path');
 var fs = require('fs');
 var request = require('request');
 
@@ -21,21 +20,21 @@ var request = require('request');
 function prepareFile(jsdoc, config) {
     let pushDoc = {
         doc: jsdoc
-    }
+    };
 
     let prepare = function (x) {
         for (let i in x) {
             if (i[0] != '_') {
                 if (typeof x[i] == 'function') {
-                    x[i] = x[i].toString()
-                    x[i] = 'function '+x[i].slice(x[i].indexOf('('))
+                    x[i] = x[i].toString();
+                    x[i] = 'function '+x[i].slice(x[i].indexOf('('));
                 }
                 if (typeof x[i] == 'object') {
-                    prepare(x[i])
+                    prepare(x[i]);
                 }
             }
         }
-    }
+    };
 
     let configureAuthOptions = function(authConfig, options) {
         if (authConfig) {
@@ -57,7 +56,7 @@ function prepareFile(jsdoc, config) {
                 options.auth = {
                     user: authConfig.basic.user,
                     pass: authConfig.basic.pass
-                }
+                };
             }
 
             if (authConfig.headers) {
@@ -66,7 +65,7 @@ function prepareFile(jsdoc, config) {
                 });
             }
         }
-    }
+    };
 
     let requestOptions = function(url, method=null, body=null) {
         let options = {
@@ -75,7 +74,7 @@ function prepareFile(jsdoc, config) {
                 'content-type'  : 'application/json', 
                 'accept-type'   : 'application/json',
             }
-        }
+        };
 
         if (method) {
             options.method = method;
@@ -117,14 +116,14 @@ function prepareFile(jsdoc, config) {
                 prepare(pushDoc.doc);
                 let putBody = JSON.stringify(pushDoc.doc);
 
-                console.log('PUT ' + toURL.replace(/^(https?:\/\/[^@:]+):[^@]+@/, '$1:******@'))
+                console.log('PUT ' + toURL.replace(/^(https?:\/\/[^@:]+):[^@]+@/, '$1:******@'));
 
                 request(requestOptions(toURL, 'PUT', putBody), function (err, resp, body) {
                     if (err) {
                         throw err;
                     }
                     else if (resp.statusCode !== 201) {
-                        throw new Error(`unable to push document\nstatus code: ${resp.statusCode}\n response: ${body}`)
+                        throw new Error(`unable to push document\nstatus code: ${resp.statusCode}\n response: ${body}`);
                     }
 
                     pushDoc.doc._rev = JSON.parse(body).rev;
