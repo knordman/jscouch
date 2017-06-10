@@ -77,7 +77,7 @@ if (require.main === module) {
     if (fs.existsSync('.jscouch.json')) {
         try {
             config = JSON.parse(fs.readFileSync('.jscouch.json'));
-            console.log('using config file .jscouch.json');
+            console.log('Using config file .jscouch.json');
         }
         catch(err) {
             throw new Error('cannot parse the .jscouch.json config file');
