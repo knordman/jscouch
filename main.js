@@ -1,4 +1,4 @@
-"use strict";
+'use strict';
 // Copyright 2017 Kristian Nordman, 2015 Mikeal Rogers 
 //
 //    Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,16 +13,14 @@
 //    See the License for the specific language governing permissions and
 //    limitations under the License.
 
-var path = require('path')
-    , fs = require('fs')
-    , request = require('request')
-    ;
+var path = require('path');
+var fs = require('fs');
+var request = require('request');
 
 
-function prepare_file(jsdoc, config) {
-    let push_doc = {
-        doc: jsdoc,
-        config: config
+function prepareFile(jsdoc, config) {
+    let pushDoc = {
+        doc: jsdoc
     }
 
     let prepare = function (x) {
@@ -39,12 +37,43 @@ function prepare_file(jsdoc, config) {
         }
     }
 
-    let request_options = function(url, method=null, body=null) {
+    let configureAuthOptions = function(authConfig, options) {
+        if (authConfig) {
+            if (authConfig.tls) {
+                if (authConfig.tls.cert) {
+                    options.key = fs.readFileSync(authConfig.tls.key);
+                    options.cert = fs.readFileSync(authConfig.tls.cert);
+                    if (authConfig.tls.passphrase) {
+                        options.passphrase = authConfig.tls.passphrase;
+                    }
+                }
+
+                if (authConfig.tls.ca) {
+                    options.ca = fs.readFileSync(authConfig.tls.ca);
+                }
+            }
+
+            if (authConfig.basic) {
+                options.auth = {
+                    user: authConfig.basic.user,
+                    pass: authConfig.basic.pass
+                }
+            }
+
+            if (authConfig.headers) {
+                Object.keys(authConfig.headers).forEach(header => {
+                    options.headers[header] = authConfig.headers[header];
+                });
+            }
+        }
+    }
+
+    let requestOptions = function(url, method=null, body=null) {
         let options = {
             uri:url, 
             headers: {
-                'content-type': 'application/json', 
-                'accept-type': 'application/json',
+                'content-type'  : 'application/json', 
+                'accept-type'   : 'application/json',
             }
         }
 
@@ -56,35 +85,21 @@ function prepare_file(jsdoc, config) {
             options.body = body;
         }
 
-        if (config.tls) {
-            if (config.tls.cert) {
-                options.key = fs.readFileSync(config.tls.key);
-                options.cert = fs.readFileSync(config.tls.cert);
-                if (config.tls.passphrase) {
-                    options.passphrase = config.tls.passphrase;
-                }
-            }
+        configureAuthOptions(config.auth, options);
 
-            if (config.tls.ca) {
-                options.ca = fs.readFileSync(config.tls.ca);
-            }
-        }
-
-        if (config.auth) {
-            options.auth = {
-                user: config.auth.user,
-                pass: config.auth.pass
-            }
+        let host = url.match(/https?:\/\/\w+(:\d+)?/);
+        if (host && config.overrides[host]) {
+            configureAuthOptions(config.overrides[host].auth, options);
         }
 
         return options;
     };
 
-    push_doc.do = function(command, database) {
+    pushDoc.do = function(command, database) {
         if (command === 'push') {
-            let to_url = database + '/' + push_doc.doc._id;
+            let toURL = database + '/' + pushDoc.doc._id;
 
-            request(request_options(to_url), function (err, resp, body) {
+            request(requestOptions(toURL), function (err, resp, body) {
                 if (err) {
                     throw err;
                 }
@@ -92,34 +107,34 @@ function prepare_file(jsdoc, config) {
                     /* Not found, then ok to PUT without _rev */
                 }
                 else if (resp.statusCode !== 200) {
-                    throw new Error("Failed to get doc\n" + body);
+                    throw new Error(`failed to get doc: ${body}`);
                 }
                 else {
-                    push_doc.current = JSON.parse(body);
-                    push_doc.doc._rev = push_doc.current._rev;
+                    pushDoc.current = JSON.parse(body);
+                    pushDoc.doc._rev = pushDoc.current._rev;
                 }
 
-                prepare(push_doc.doc);
-                let put_body = JSON.stringify(push_doc.doc);
+                prepare(pushDoc.doc);
+                let putBody = JSON.stringify(pushDoc.doc);
 
-                console.log('PUT ' + to_url.replace(/^(https?:\/\/[^@:]+):[^@]+@/, '$1:******@'))
+                console.log('PUT ' + toURL.replace(/^(https?:\/\/[^@:]+):[^@]+@/, '$1:******@'))
 
-                request(request_options(to_url, 'PUT', put_body), function (err, resp, body) {
+                request(requestOptions(toURL, 'PUT', putBody), function (err, resp, body) {
                     if (err) {
                         throw err;
                     }
                     else if (resp.statusCode !== 201) {
-                        throw new Error("Could not push document\nCode: " + resp.statusCode + "\n" + body)
+                        throw new Error(`unable to push document\nstatus code: ${resp.statusCode}\n response: ${body}`)
                     }
 
-                    push_doc.doc._rev = JSON.parse(body).rev;
-                    console.log('Finished push: ', push_doc.doc._id, 'new rev: ' + push_doc.doc._rev);
+                    pushDoc.doc._rev = JSON.parse(body).rev;
+                    console.log(`Finished push: ${pushDoc.doc._id}, new rev: ${pushDoc.doc._rev}`);
                 });
             });
         }
     };
 
-    return push_doc;
+    return pushDoc;
 }
 
-exports.prepare_file = prepare_file;
+exports.prepareFile = prepareFile;

@@ -5,7 +5,7 @@
     "couchdb",
     "javascript"
   ],
-  "version": "1.0.2",
+  "version": "2.0.0",
   "author": "Kristian Nordman",
   "main": "./main.js",
   "dependencies": {
@@ -19,5 +19,8 @@
     "type": "git",
     "url": "https://github.com/knordman/jscouch"
   },
-  "private": true
+  "private": true,
+  "devDependencies": {
+    "eslint": "^3.19.0"
+  }
 }

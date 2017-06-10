@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-"use strict";
+'use strict';
 // Copyright 2017 Kristian Nordman, 2015 Mikeal Rogers 
 //
 //    Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,7 +23,7 @@ if (require.main === module) {
     var node = process.argv.shift();
     var bin = process.argv.shift();
     var command = process.argv.shift();
-    var docsdir = process.argv.shift();
+    var dir = process.argv.shift();
     var database = process.argv.shift();
 
     if (command == 'help' || command == undefined) {
@@ -31,24 +31,37 @@ if (require.main === module) {
             [ "jscouch -- utility for pushing docs containing js to CouchDB"
             , ""
             , "Usage:"
-            , " jscouch <command> <docsdirectory> http://localhost:5984/dbname" 
+            , " jscouch <command> <directory> http://mycouch:5984/dbname" 
             , ""
             , "Commands:"
+            , "  help   : Show this help"
             , "  push   : Push docs to server."
             , ""
-            , "Config file options [.jscouch.json]:"
+            , "Config file config [read from .jscouch.json]:"
             , JSON.stringify({
-                'tls': {
-                    'cert': 'path to tls client cert',
-                    'key': 'path to tls client cert private key',
-                    'passphrase': 'tls client cert passphrase',
-                    'ca': 'path to CA for database tls server cert'
-                },
+                'filter': 'include filter for files in directory',
                 'auth': {
-                    'user': 'basic auth user',
-                    'pass': 'basic auth password'
+                    'tls': {
+                        'cert': 'path to tls client cert',
+                        'key': 'path to tls client cert private key',
+                        'passphrase': 'tls client cert passphrase',
+                        'ca': 'path to CA cert for database tls server cert'
+                    },
+                    'basic': {
+                        'user': 'basic auth user',
+                        'pass': 'basic auth password'
+                    },
+                    'headers': {
+                        'x-header-name': 'one entry for each extra header'
+                    }
                 },
-                'filter': 'include filter for docsdirectory'
+                'overrides': {
+                    'http://mycouch:5984' : {
+                        'auth': {
+                            'same as': 'above'
+                        }
+                    }
+                }
             }, null, 2)
             ]
             .join('\n')
@@ -61,21 +74,22 @@ if (require.main === module) {
         filter: '.*_db\.js'
     }
 
-    if (fs.statSync('.jscouch.json').isFile()) {
+    if (fs.existsSync('.jscouch.json')) {
         try {
             config = JSON.parse(fs.readFileSync('.jscouch.json'));
+            log.info('using config file .jscouch.json');
         }
         catch(err) {
-            throw new Error('Cannot parse the .jscouch.json config file');
+            throw new Error('cannot parse the .jscouch.json config file');
         }
     }
 
-    var docs = fs.readdirSync(docsdir) || [];
-    docs.filter( (entry) => {
+    var docs = fs.readdirSync(dir) || [];
+    docs.filter(entry => {
         return entry.match(config.filter);
-    }).forEach( (doc, index) => {
-        console.log('Detected', doc);
-        let doc_path = path.join(process.cwd(), docsdir, doc);
-        jscouch.prepare_file(require(doc_path).doc, config).do(command, database);
+    }).forEach((doc, index) => {
+        console.log(`Detected ${doc}`);
+        let docPath = path.join(process.cwd(), dir, doc);
+        jscouch.prepareFile(require(docPath).doc, config).do(command, database);
     });
 }
