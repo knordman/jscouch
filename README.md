@@ -18,26 +18,39 @@ No attachments, less dependencies (only requests), more options for authenticati
 # Running
 
 <pre>
-couchjs -- utility for pushing docs containing js to CouchDB
+jscouch -- utility for pushing docs containing js to CouchDB
 
 Usage:
- couchjs <command> <docsdirectory> http://localhost:5984/dbname
+ jscouch <command> <directory> http://mycouch:5984/dbname
 
 Commands:
+  help   : Show this help
   push   : Push docs to server.
 
-Config file [.couchjs.json]:
+Config file config [read from .jscouch.json]:
 {
-  "tls": {
-    "cert": "path to tls client cert",
-    "key": "path to tls client cert private key",
-    "passphrase": "tls client cert passphrase",
-    "ca": "path to CA for database tls server cert"
-  },
+  "filter": "include filter for files in directory",
   "auth": {
-    "user": "basic auth user",
-    "pass": "basic auth password"
+    "tls": {
+      "cert": "path to tls client cert",
+      "key": "path to tls client cert private key",
+      "passphrase": "tls client cert passphrase",
+      "ca": "path to CA cert for database tls server cert"
+    },
+    "basic": {
+      "user": "basic auth user",
+      "pass": "basic auth password"
+    },
+    "headers": {
+      "x-header-name": "one entry for each extra header"
+    }
   },
-  "filter": "include filter for docsdirectory"
+  "overrides": {
+    "http://mycouch:5984": {
+      "auth": {
+        "same as": "above"
+      }
+    }
+  }
 }
 </pre>
