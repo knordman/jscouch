@@ -86,7 +86,7 @@ function prepareFile(jsdoc, config) {
 
         configureAuthOptions(config.auth, options);
 
-        let match = url.match(/https?:\/\/\w+(:\d+)?/);
+        let match = url.match(/https?:\/\/(\w+\.?)+(:\d+)?/);
         if (match) {
             let host = match[0];
             if (config.overrides && config.overrides[host]) {
